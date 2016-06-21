@@ -1,0 +1,95 @@
+---
+title: 'Case Study: GDP'
+author: "Clinton Tippett"
+date: "June 12, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+
+GDP by country. Based on two datasets, I will present findings around multiple country's GDP and the factors that distinguish them. I will explore income groups, GDP rank, and how each of the variables relate to each other.
+
+## Loading the data...
+
+In order to conduct data analysis, we must have data! In the next chunk of code, I am going to load the data into R.
+
+```{r}
+install.packages("downloader", repos = 'http://cran.us.r-project.org')
+library(downloader)
+
+download("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv", destfile="gdp.csv")
+gdp <- read.csv("gdp.csv", stringsAsFactors=FALSE)
+
+download("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv", destfile="edu.csv")
+edu <- read.csv("edu.csv", stringsAsFactors=FALSE)
+
+```
+
+Now, the two datasets that will be used are loaded into R. This was accomplished using the 'download' function in R to import the data and then read, using read.csv() function, in the files and store them as dataframes.
+
+## Cleaning the Data
+
+Once the data was loaded, I could see (by calling the dataframe) that there was a lot of missing or unused data. Before I merge the files, this must be cleaned up.
+
+```{r}
+gdp1 <- gdp[5:235,]
+
+names(gdp1) <- c("CountryCode", "Rank", "Un3", "Country", "Dollars", "un6", "un7", "un8", "un9", "un10")
+gdp1$Dollars <- gsub(",","", gdp1$Dollars)
+gdp1$Dollars <- as.numeric(gdp1$Dollars)
+gdp1$Rank <- as.numeric(gdp1$Rank)
+str(gdp1)
+gdp2 <- within(gdp1, rm("Un3", "un6", "un7", "un8", "un9", "un10"))
+
+edu1 <- within(edu, rm("Special.Notes", "Long.Name", "Region", "Lending.category", "Other.groups", "Currency.Unit", "Latest.population.census", "Latest.household.survey", "National.accounts.base.year", "National.accounts.reference.year", "System.of.National.Accounts", "SNA.price.valuation", "Alternative.conversion.factor", "PPP.survey.year", "Table.Name", "WB.2.code", "X2.alpha.code", "Balance.of.Payments.Manual.in.use", "External.debt.Reporting.status", "System.of.trade", "Government.Accounting.concept", "IMF.data.dissemination.standard", "Source.of.most.recent.Income.and.expenditure.data", "Vital.registration.complete", "Latest.agricultural.census", "Latest.industrial.data", "Latest.trade.data", "Latest.water.withdrawal.data"))
+
+
+comb <- merge(gdp2, edu1, by="CountryCode", all=TRUE)
+
+```
+Here, I selected only the rows of data that I needed, as a lot of the rows were blank. Next, I gave the variables names and used the label of "un3, un4, etc" to label the columns that I wanted to remove. I repeated this process for the edu dataset. Using the within() function, I can select which variables I want to use for analysis. Also, it allows variables to easily be put back in place if needed. 
+
+## Question 1: By using the str() function below, I can see that 231 of the 'CountryCode' IDs match. 
+
+```{r}
+str(gdp2)
+str(edu1)
+```
+
+## Question 2: To rearrange each country in ascending order by GDP I used the order function. Based on the new data frame, the 13th country on the list is:KNA, St. Kitts and Nevis with a GDP of 767.
+
+```{r}
+combOr <- comb[order(comb$Dollars),]
+head(combOr, 13)
+
+str(comb)
+```
+
+## Question 3: The average GDP rankings were also calculated based on if the country fell into one of two groups: High income: OECD and High income: nonOECD. Since NA values were present, the code had to be specified to remove these values when calculating the mean. 
+
+```{r}
+mean(comb$Rank[comb$Income.Group=="High income: OECD"], na.rm=TRUE)
+mean(comb$Rank[comb$Income.Group=="High income: nonOECD"], na.rm=TRUE)
+```
+
+## Question 4: I cannot seem to get this to generate. I've looked at several examples and my syntax seems correct...
+
+```{r}
+install.packages("ggplot2", repos = 'http://cran.us.r-project.org')
+library(ggplot2)
+qplot("CountryCode", "Dollars", data=comb, color="Income.Group")
+```
+
+## Question 5: Using the cut method, I divided the GDP rankings into five groups. When plotted into a table against the different income groups we can see that there are 5 countries that fall into the 'Lower middle' income group, but are in the quantile with the highest GDP.
+
+```{r}
+
+rankcut <- cut(comb$Rank, breaks=5)
+table(rankcut, comb$Income.Group)
+```
+
+## Conclusion: The GDP ranking can be broken down by several factors. The main factors taken into consideration in this project was that of the "Income Group". Surprisingly, the countries that ranked highest in GDP were not typically in the highest income group. In fact, over 40% of those countries were grouped in middle income or lower. Additionally, there is a sizable difference in GDP amounts between the top 5 and the rest of the world. This gap can help explain the variance shown in the rank quantile. 
